@@ -3,6 +3,8 @@ import requests
 import pickle
 from pathlib import Path
 from datetime import datetime, timedelta
+import pandas as pd
+import matplotlib.pyplot as plt
 
 # constants
 data_url = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master\
@@ -11,7 +13,8 @@ global.csv"
 data_folder_name = 'data'
 csv_file_name = 'data.csv'
 metadata_file_name = 'meta.pickle'
-stale_days = 0.5
+stale_days = 0.1
+days_on_last_sum = 7
 
 data_file_path = os.path.join(data_folder_name, csv_file_name)
 metadata_file_path = os.path.join(data_folder_name, metadata_file_name)
@@ -62,13 +65,44 @@ def update_data():
     update_metadata({'date': now})
 
 
+def get_data():
+    update_data()
+    return pd.read_csv(data_file_path)
+
+
 def show_charts():
-    # show charts
-    pass
+    data = get_data()
+
+    # Group countries
+    data = data.groupby(by=['Country/Region']).sum()
+
+    # Remove lat long
+    data = data.iloc[:, 2:]
+
+    # Create new dataframe with last cases
+    def new_cases_last_days(row):
+        cases = row[1]
+
+        def get_new(i):
+            return cases[i] - cases[max(0, i - days_on_last_sum)]
+        return map(get_new, range(len(cases)))
+
+    data_new = pd.DataFrame([new_cases_last_days(row)
+                             for row in data.iterrows()],
+                            data.index,
+                            data.columns)
+
+    # Transform dataframes: divide by population
+
+    # Plot both dataframes
+    for i in range(len(data.index)):
+        plt.loglog(data.iloc[i, :],
+                   data_new.iloc[i, :], label=data.index[i])
+    plt.legend()
+    plt.show()
 
 
 def main():
-    update_data()
     show_charts()
 
 
