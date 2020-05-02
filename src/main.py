@@ -5,6 +5,7 @@ from pathlib import Path
 from datetime import datetime, timedelta
 import pandas as pd
 import matplotlib.pyplot as plt
+from matplotlib import ticker
 
 # constants
 data_url = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master\
@@ -13,6 +14,7 @@ global.csv"
 data_folder_name = 'data'
 csv_file_name = 'data.csv'
 metadata_file_name = 'meta.pickle'
+population_file_path = 'static_data/population.csv'
 stale_days = 0.1
 days_on_last_sum = 7
 
@@ -21,7 +23,7 @@ metadata_file_path = os.path.join(data_folder_name, metadata_file_name)
 stale_timedelta = timedelta(days=stale_days)
 
 
-def create_initial_data():
+def create_data_folder():
     Path(data_folder_name).mkdir(parents=True, exist_ok=True)
 
 
@@ -43,7 +45,7 @@ def update_metadata(new_metadata):
 
 
 def update_data():
-    create_initial_data()
+    create_data_folder()
 
     # If data is stale
     metadata = get_metadata()
@@ -65,9 +67,18 @@ def update_data():
     update_metadata({'date': now})
 
 
+def sanitize_data(data):
+    return data.drop(['West Bank and Gaza', 'Diamond Princess', 'Kosovo', 'MS Zaandam'])
+
+
 def get_data():
     update_data()
-    return pd.read_csv(data_file_path)
+    data = pd.read_csv(data_file_path)
+    return data
+
+
+def get_population():
+    return pd.read_csv(population_file_path).set_index('Country')
 
 
 def show_charts():
@@ -75,6 +86,9 @@ def show_charts():
 
     # Group countries
     data = data.groupby(by=['Country/Region']).sum()
+
+    # Remove unwanted "countries"
+    data = sanitize_data(data)
 
     # Remove lat long
     data = data.iloc[:, 2:]
@@ -94,11 +108,28 @@ def show_charts():
 
     # Transform dataframes: divide by population
 
+    population_data = get_population()
+    population_data = population_data
+
+    def ponderate_by_population(row):
+        return row.div(population_data.loc[row.name]['Population']).div(0.01)
+
+    data = data.apply(ponderate_by_population, axis=1)
+    data_new = data_new.apply(ponderate_by_population, axis=1)
+
     # Plot both dataframes
+    _, ax = plt.subplots()
     for i in range(len(data.index)):
-        plt.loglog(data.iloc[i, :],
-                   data_new.iloc[i, :], label=data.index[i])
-    plt.legend()
+        if data.iloc[i].name in ['Chile', 'US', 'Switzerland',
+                                 'Spain', 'Italy', 'France', 'Germany'
+                                 ]:
+            ax.plot(data.iloc[i, :],
+                    data_new.iloc[i, :], label=data.index[i])
+    ax.get_yaxis().set_major_formatter(
+        ticker.FuncFormatter(lambda x, p: str(round(x, 4)) + '%'))
+    ax.get_xaxis().set_major_formatter(
+        ticker.FuncFormatter(lambda x, p: str(round(x, 4)) + '%'))
+    ax.legend()
     plt.show()
 
 
