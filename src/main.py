@@ -68,7 +68,9 @@ def update_data():
 
 
 def sanitize_data(data):
-    return data.drop(['West Bank and Gaza', 'Diamond Princess', 'Kosovo', 'MS Zaandam'])
+    return data.drop(
+        ['West Bank and Gaza', 'Diamond Princess', 'Kosovo', 'MS Zaandam']
+    )
 
 
 def get_data():
