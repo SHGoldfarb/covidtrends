@@ -113,8 +113,13 @@ def show_charts():
     population_data = get_population()
     population_data = population_data
 
+    # Set data to per million people
+    millionth = 0.000001
+
     def ponderate_by_population(row):
-        return row.div(population_data.loc[row.name]['Population']).div(0.01)
+        return row.div(
+            population_data.loc[row.name]['Population']
+        ).div(millionth)
 
     data = data.apply(ponderate_by_population, axis=1)
     data_new = data_new.apply(ponderate_by_population, axis=1)
@@ -128,9 +133,13 @@ def show_charts():
             ax.plot(data.iloc[i, :],
                     data_new.iloc[i, :], label=data.index[i])
     ax.get_yaxis().set_major_formatter(
-        ticker.FuncFormatter(lambda x, p: str(round(x, 4)) + '%'))
+        ticker.FuncFormatter(lambda x, p: str(round(x, 4))))
     ax.get_xaxis().set_major_formatter(
-        ticker.FuncFormatter(lambda x, p: str(round(x, 4)) + '%'))
+        ticker.FuncFormatter(lambda x, p: str(round(x, 4))))
+    ax.get_yaxis().set_minor_formatter(
+        ticker.FuncFormatter(lambda x, p: str(round(x, 4))))
+    ax.get_xaxis().set_minor_formatter(
+        ticker.FuncFormatter(lambda x, p: str(round(x, 4))))
     ax.legend()
     plt.show()
 
