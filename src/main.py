@@ -110,24 +110,25 @@ def get_population():
     return pd.read_csv(population_file_path).set_index('Country')
 
 
-def show_charts(data):
-
-    data = sanitize_data(data)
-
+def last_days(data, n_days):
     # Create new dataframe with last cases
 
     def new_last_days(row):
         cases = row[1]
 
         def get_new(i):
-            return cases[i] - cases[max(0, i - days_on_last_sum)]
+            return cases[i] - cases[max(0, i - n_days)]
         return map(get_new, range(len(cases)))
 
-    data_new = pd.DataFrame([new_last_days(row)
-                             for row in data.iterrows()],
-                            data.index,
-                            data.columns)
+    data_last = pd.DataFrame([new_last_days(row)
+                              for row in data.iterrows()],
+                             data.index,
+                             data.columns)
 
+    return data_last
+
+
+def ponderate_dataframe_by_population(data):
     # Transform dataframes: divide by population
 
     population_data = get_population()
@@ -136,23 +137,28 @@ def show_charts(data):
     # Set data to per million people
     millionth = 0.000001
 
-    def ponderate_by_population(row):
+    def ponderate_row_by_population(row):
         return row.div(
             population_data.loc[row.name]['Population']
         ).div(millionth)
 
-    data = data.apply(ponderate_by_population, axis=1)
-    data_new = data_new.apply(ponderate_by_population, axis=1)
+    return data.apply(ponderate_row_by_population, axis=1)
 
+
+def select_countries(data, countries):
+
+    return data.drop(
+        set(data.index) - set(countries)
+    )
+
+
+def plot_dataframes_against_eachother(data1, data2):
     # Plot both dataframes
     _, ax = plt.subplots()
-    for i in range(len(data.index)):
-        if data.iloc[i].name in ['Chile', 'Argentina', 'Germany',
-                                 'United Kingdom', 'Ecuador', 'US',
-                                 'Brazil', 'Italy', 'Spain', 'Australia',
-                                 ]:
-            ax.loglog(data.iloc[i, :],
-                      data_new.iloc[i, :], label=data.index[i])
+    for i in range(len(data1.index)):
+
+        ax.loglog(data1.iloc[i, :],
+                  data2.iloc[i, :], label=data1.index[i])
     ax.get_yaxis().set_major_formatter(
         ticker.FuncFormatter(lambda x, p: str(round(x, 4))))
     ax.get_xaxis().set_major_formatter(
@@ -165,24 +171,44 @@ def show_charts(data):
     plt.show()
 
 
-def show_cases_chart():
+def process_data(data):
+
+    data = sanitize_data(data)
+
+    data_last = last_days(data, days_on_last_sum)
+
+    data = ponderate_dataframe_by_population(data)
+    data_last = ponderate_dataframe_by_population(data_last)
+
+    countries = ['Chile', 'Argentina', 'Germany',
+                 'United Kingdom', 'Ecuador', 'US',
+                 'Brazil', 'Italy', 'Spain', 'Australia',
+                 'Korea, South'
+                 ]
+
+    data = select_countries(data, countries)
+    data_last = select_countries(data_last, countries)
+
+    plot_dataframes_against_eachother(data, data_last)
+
+
+def get_cases_data():
     file_path = in_data_folder(cases_constants["csv_file_name"])
 
-    data = get_data(file_path)
-
-    show_charts(data)
+    return get_data(file_path)
 
 
-def show_deaths_chart():
+def get_deaths_data():
     file_path = in_data_folder(deaths_constants["csv_file_name"])
 
-    data = get_data(file_path)
-
-    show_charts(data)
+    return get_data(file_path)
 
 
 def main():
-    show_deaths_chart()
+    data = get_deaths_data()
+    # data = get_cases_data()
+
+    process_data(data)
 
 
 if __name__ == "__main__":
