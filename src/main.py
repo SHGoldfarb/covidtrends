@@ -8,21 +8,13 @@ import matplotlib.pyplot as plt
 from matplotlib import ticker
 
 # constants
-cases_constants = {
-    "data_url": "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master\
+confirmed_data_url = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master\
 /csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_\
-global.csv",
-    "csv_file_name": "time_series_covid19_confirmed_global.csv",
-    "metadata_file_name": 'cases_meta.pickle'
-}
+global.csv"
 
-deaths_constants = {
-    "data_url": "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master\
+deaths_data_url = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master\
 /csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_\
-global.csv",
-    "csv_file_name": "time_series_covid19_deaths_global.csv",
-    "metadata_file_name": 'deaths_meta.pickle'
-}
+global.csv"
 
 data_folder_name = 'data'
 population_file_path = 'static_data/population.csv'
@@ -32,8 +24,24 @@ days_on_last_sum = 7
 stale_timedelta = timedelta(days=stale_days)
 
 
+def csv_file_name(data_url):
+    return data_url.split('/')[-1]
+
+
+def metadata_file_name(data_url):
+    return csv_file_name(data_url) + '.meta.pickle'
+
+
 def in_data_folder(file_name):
     return os.path.join(data_folder_name, file_name)
+
+
+def csv_file_path(data_url):
+    return in_data_folder(csv_file_name(data_url))
+
+
+def metadata_file_path(data_url):
+    return in_data_folder(metadata_file_name(data_url))
 
 
 def create_data_folder():
@@ -57,32 +65,29 @@ def update_metadata(new_metadata, file_path):
     save_metadata({**metadata, **new_metadata}, file_path)
 
 
-def update_data():
+def update_data(data_url):
+    metadata = get_metadata(metadata_file_path(data_url))
+    date = metadata.get('date')
+    now = datetime.now()
+
+    # If data is stale
+    if date and (date + stale_timedelta > now):
+        print('Data up to date, skipping download.')
+        return
+
+    print('Data stale or unexistent, downloading...')
+    # Get and save data
+    request_result = requests.get(
+        data_url, allow_redirects=True)
 
     create_data_folder()
-    for constants in [cases_constants, deaths_constants]:
-        metadata_file_path = in_data_folder(constants["metadata_file_name"])
-        csv_file_path = in_data_folder(constants["csv_file_name"])
 
-        # If data is stale
-        metadata = get_metadata(metadata_file_path)
-        date = metadata.get('date')
-        now = datetime.now()
-        if date and (date + stale_timedelta > now):
-            print('Data up to date, skipping download.')
-            continue
+    open(csv_file_path(data_url),
+         'wb').write(request_result.content)
+    print('data updated')
 
-        print('Data stale or unexistent, downloading...')
-        # Get and save data
-        request_result = requests.get(
-            constants["data_url"], allow_redirects=True)
-
-        open(csv_file_path,
-             'wb').write(request_result.content)
-        print('data updated')
-
-        # Update data staleness
-        update_metadata({'date': now}, metadata_file_path)
+    # Update data staleness
+    update_metadata({'date': now}, metadata_file_path(data_url))
 
 
 def sanitize_data(data):
@@ -100,9 +105,9 @@ def sanitize_data(data):
     return data
 
 
-def get_data(file_path):
-    update_data()
-    data = pd.read_csv(file_path)
+def get_data(data_url):
+    update_data(data_url)
+    data = pd.read_csv(csv_file_path(data_url))
     return data
 
 
@@ -192,21 +197,8 @@ def process_data(data):
     plot_dataframes_against_eachother(data, data_last)
 
 
-def get_cases_data():
-    file_path = in_data_folder(cases_constants["csv_file_name"])
-
-    return get_data(file_path)
-
-
-def get_deaths_data():
-    file_path = in_data_folder(deaths_constants["csv_file_name"])
-
-    return get_data(file_path)
-
-
 def main():
-    data = get_deaths_data()
-    # data = get_cases_data()
+    data = get_data(deaths_data_url)
 
     process_data(data)
 
