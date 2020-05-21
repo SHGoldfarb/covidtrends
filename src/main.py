@@ -172,6 +172,9 @@ def plot_dataframes_against_eachother(data1, data2):
         ticker.FuncFormatter(lambda x, p: str(round(x, 4))))
     ax.get_xaxis().set_minor_formatter(
         ticker.FuncFormatter(lambda x, p: str(round(x, 4))))
+    ax.set_ylabel('Weekly per million people')
+    ax.set_xlabel('Total per million people')
+    ax.set_title('Deaths or cases per country')
     ax.legend()
     plt.show()
 
@@ -185,11 +188,7 @@ def process_data(data):
     data = ponderate_dataframe_by_population(data)
     data_last = ponderate_dataframe_by_population(data_last)
 
-    countries = ['Chile', 'Argentina', 'Germany',
-                 'United Kingdom', 'Ecuador', 'US',
-                 'Brazil', 'Italy', 'Spain', 'Australia',
-                 'Korea, South'
-                 ]
+    countries = ['Chile', 'Germany', 'Spain', 'Australia']
 
     data = select_countries(data, countries)
     data_last = select_countries(data_last, countries)
