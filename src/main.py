@@ -172,34 +172,51 @@ def plot_dataframes_against_eachother(data1, data2):
         ticker.FuncFormatter(lambda x, p: str(round(x, 4))))
     ax.get_xaxis().set_minor_formatter(
         ticker.FuncFormatter(lambda x, p: str(round(x, 4))))
-    ax.set_ylabel('Weekly per million people')
-    ax.set_xlabel('Total per million people')
-    ax.set_title('Deaths or cases per country')
-    ax.legend()
-    plt.show()
-
-
-def process_data(data):
-
-    data = sanitize_data(data)
-
-    data_last = last_days(data, days_on_last_sum)
-
-    data = ponderate_dataframe_by_population(data)
-    data_last = ponderate_dataframe_by_population(data_last)
-
-    countries = ['Chile', 'Germany', 'Spain', 'Australia']
-
-    data = select_countries(data, countries)
-    data_last = select_countries(data_last, countries)
-
-    plot_dataframes_against_eachother(data, data_last)
+    return ax
 
 
 def main():
-    data = get_data(deaths_data_url)
+    confirmed_data = get_data(confirmed_data_url)
+    deaths_data = get_data(deaths_data_url)
 
-    process_data(data)
+    confirmed_data = sanitize_data(confirmed_data)
+    deaths_data = sanitize_data(deaths_data)
+
+    confirmed_last_days_data = last_days(confirmed_data, days_on_last_sum)
+    deaths_last_days_data = last_days(deaths_data, days_on_last_sum)
+
+    confirmed_data = ponderate_dataframe_by_population(confirmed_data)
+    deaths_data = ponderate_dataframe_by_population(deaths_data)
+
+    confirmed_last_days_data = ponderate_dataframe_by_population(
+        confirmed_last_days_data)
+    deaths_last_days_data = ponderate_dataframe_by_population(
+        deaths_last_days_data)
+
+    countries = ['Chile', 'Germany', 'Spain', 'Brazil',
+                 'US', 'Italy', 'United Kingdom']
+
+    confirmed_data = select_countries(confirmed_data, countries)
+    deaths_data = select_countries(deaths_data, countries)
+
+    confirmed_last_days_data = select_countries(
+        confirmed_last_days_data, countries)
+    deaths_last_days_data = select_countries(deaths_last_days_data, countries)
+
+    ax = plot_dataframes_against_eachother(
+        confirmed_data, confirmed_last_days_data)
+    ax.set_ylabel('Weekly per million people')
+    ax.set_xlabel('Total per million people')
+    ax.set_title('Confirmed cases per country')
+    ax.legend()
+    plt.show()
+
+    ax = plot_dataframes_against_eachother(deaths_data, deaths_last_days_data)
+    ax.set_ylabel('Weekly per million people')
+    ax.set_xlabel('Total per million people')
+    ax.set_title('Deaths per country')
+    ax.legend()
+    plt.show()
 
 
 if __name__ == "__main__":
