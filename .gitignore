@@ -1,2 +1,5 @@
-# Data files
+# Ignore downloaded data files
 data
+
+# Ignore pycache
+*__pycache__*
